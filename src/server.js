@@ -2,9 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express4';
+import { expressMiddleware } from '@as-integrations/express4'; 
 import connectDB from './config/db.js';
-import schema from './graphql/schema.js'; // Imports the compiled master schema
+import schema from './graphql/schema.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -19,7 +19,7 @@ app.use(express.json());
 // Initialize Apollo Server with your master schema
 const server = new ApolloServer({
   schema,
-  introspection: true, // Allows testing schemas via the Apollo Sandbox dashboard
+  introspection: true,
 });
 
 // Start Apollo Server before applying it as middleware
