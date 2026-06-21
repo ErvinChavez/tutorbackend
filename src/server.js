@@ -9,23 +9,23 @@ import schema from './graphql/schema.js';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Connect to MongoDB Atlas
+// 1. Establish data layer connection first
 connectDB();
 
-// Core Cross-Origin and JSON Parsing Middlewares
+// 2. Load body parsing and cors BEFORE anything else reads incoming traffic
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
 app.use(express.json());
 
-// Initialize Apollo Server with your master schema
+// 3. Initialize the Apollo Server orchestration instance
 const server = new ApolloServer({
   schema,
   introspection: true,
 });
 
-// Start Apollo Server before applying it as middleware
+// 4. Await the server compilation boot layer
 await server.start();
 
-// Mount the GraphQL endpoint at /graphql
+// 5. Mount the compiled engine onto Express AFTER express.json() is active
 app.use('/graphql', expressMiddleware(server));
 
 app.listen(PORT, () => {
