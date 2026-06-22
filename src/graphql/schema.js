@@ -7,26 +7,31 @@ import { requestMutations } from '../modules/requests/request.mutations.js';
 // Auth module
 import { authMutations } from '../modules/auth/auth.mutations.js';
 
+// Students module
+import { studentQueries } from '../modules/students/student.queries.js';
+import { studentMutations } from '../modules/students/student.mutations.js';
+
+// Sessions module
+import { sessionQueries } from '../modules/sessions/session.queries.js';
+import { sessionMutations } from '../modules/sessions/session.mutations.js';
+
 /**
- * Root Query type.
- * Each feature module exports a plain object of field configs which we
- * spread in here. To add a new module later (students, sessions, etc.),
- * import its queries and spread them alongside the existing ones.
+ * Root Query type. Each feature module exports a flat object of field
+ * configs which we spread in here.
  */
 const RootQuery = new GraphQLObjectType({
   name: 'Query',
   description: 'Root query type.',
   fields: () => ({
     ...requestQueries,
-    // ...studentQueries,
-    // ...sessionQueries,
+    ...studentQueries,
+    ...sessionQueries,
     // ...testimonialQueries,
   }),
 });
 
 /**
- * Root Mutation type.
- * Same pattern as RootQuery — spread each module's mutation field configs.
+ * Root Mutation type. Same spread pattern as RootQuery.
  */
 const RootMutation = new GraphQLObjectType({
   name: 'Mutation',
@@ -34,8 +39,8 @@ const RootMutation = new GraphQLObjectType({
   fields: () => ({
     ...requestMutations,
     ...authMutations,
-    // ...studentMutations,
-    // ...sessionMutations,
+    ...studentMutations,
+    ...sessionMutations,
     // ...testimonialMutations,
   }),
 });
