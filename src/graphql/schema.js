@@ -4,6 +4,9 @@ import { GraphQLSchema, GraphQLObjectType } from 'graphql';
 import { requestQueries } from '../modules/requests/request.queries.js';
 import { requestMutations } from '../modules/requests/request.mutations.js';
 
+// Auth module
+import { authMutations } from '../modules/auth/auth.mutations.js';
+
 /**
  * Root Query type.
  * Each feature module exports a plain object of field configs which we
@@ -30,7 +33,7 @@ const RootMutation = new GraphQLObjectType({
   description: 'Root mutation type.',
   fields: () => ({
     ...requestMutations,
-    // ...authMutations,
+    ...authMutations,
     // ...studentMutations,
     // ...sessionMutations,
     // ...testimonialMutations,

@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@apollo/server": "^5.5.1",
-    "@as-integrations/express4": "^1.1.2",
+    "@as-integrations/express5": "^1.1.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
