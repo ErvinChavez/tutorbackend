@@ -15,6 +15,10 @@ import { studentMutations } from '../modules/students/student.mutations.js';
 import { sessionQueries } from '../modules/sessions/session.queries.js';
 import { sessionMutations } from '../modules/sessions/session.mutations.js';
 
+// Testimonials module
+import { testimonialQueries } from '../modules/testimonials/testimonial.queries.js';
+import { testimonialMutations } from '../modules/testimonials/testimonial.mutations.js';
+
 /**
  * Root Query type. Each feature module exports a flat object of field
  * configs which we spread in here.
@@ -26,7 +30,7 @@ const RootQuery = new GraphQLObjectType({
     ...requestQueries,
     ...studentQueries,
     ...sessionQueries,
-    // ...testimonialQueries,
+    ...testimonialQueries,
   }),
 });
 
@@ -41,7 +45,7 @@ const RootMutation = new GraphQLObjectType({
     ...authMutations,
     ...studentMutations,
     ...sessionMutations,
-    // ...testimonialMutations,
+    ...testimonialMutations,
   }),
 });
 

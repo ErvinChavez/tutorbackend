@@ -42,10 +42,7 @@ const buildConfirmationHtml = ({
 
   const optionsList = optionsArray.length
     ? optionsArray
-        .map(
-          (opt) =>
-            `<li style="margin:0 0 8px;">${escapeHtml(opt)}</li>`
-        )
+        .map((opt) => `<li style="margin:0 0 8px;">${escapeHtml(opt)}</li>`)
         .join('')
     : '<li style="margin:0 0 8px;">Our team will recommend the best options for your child.</li>';
 
@@ -121,16 +118,9 @@ const buildConfirmationHtml = ({
 /**
  * Send the onboarding confirmation email to a parent.
  *
- * This function is intentionally fault-tolerant: it NEVER throws. It always
- * resolves to a result object so the caller (e.g. a GraphQL mutation) can
- * decide what to do without risking an unhandled rejection.
+ * Fault-tolerant: NEVER throws. Always resolves to a result object so the
+ * caller can decide what to do without risking an unhandled rejection.
  *
- * @param {Object} params
- * @param {string} params.parentName
- * @param {string} params.parentEmail
- * @param {string} params.studentName
- * @param {string} [params.gradeLevel]
- * @param {(string[]|string)} [params.tutoringOptions]
  * @returns {Promise<{ success: boolean, data?: object, error?: any }>}
  */
 export const sendParentConfirmationEmail = async ({
@@ -140,7 +130,6 @@ export const sendParentConfirmationEmail = async ({
   gradeLevel,
   tutoringOptions,
 }) => {
-  // Guard: missing config shouldn't crash the app — log and skip gracefully.
   if (!process.env.RESEND_API_KEY) {
     console.warn(
       '⚠️  RESEND_API_KEY is not set — skipping parent confirmation email.'
@@ -166,7 +155,6 @@ export const sendParentConfirmationEmail = async ({
       }),
     });
 
-    // Resend reports delivery problems via the `error` field, not a throw.
     if (error) {
       console.error(
         `❌ Resend failed to send confirmation email to ${parentEmail}:`,
@@ -180,9 +168,119 @@ export const sendParentConfirmationEmail = async ({
     );
     return { success: true, data };
   } catch (err) {
-    // Network/SDK-level failures land here. Swallow and report, never throw.
     console.error(
       `❌ Unexpected error sending confirmation email to ${parentEmail}: ${err.message}`
+    );
+    return { success: false, error: err };
+  }
+};
+
+/**
+ * Build the internal HTML body for a low-rating testimonial alert.
+ * This email goes to the BUSINESS, not the customer — it's a heads-up that
+ * someone left critical feedback and may want a personal follow-up.
+ */
+const buildTestimonialAlertHtml = ({ parentAuthor, rating, message }) => {
+  const safeAuthor = escapeHtml(parentAuthor) || 'Anonymous';
+  const safeMessage = escapeHtml(message) || '(no message provided)';
+  const clamped = Math.max(0, Math.min(5, Number(rating) || 0));
+  const stars = '★'.repeat(clamped) + '☆'.repeat(5 - clamped);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Feedback Needs Attention</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.06);">
+            <tr>
+              <td style="background:#b91c1c;padding:28px 40px;text-align:center;">
+                <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Feedback Needs Your Attention</h1>
+                <p style="margin:6px 0 0;color:#fee2e2;font-size:14px;">A parent left a lower rating — consider reaching out.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 40px;">
+                <p style="margin:0 0 6px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">From</p>
+                <p style="margin:0 0 18px;color:#111827;font-size:16px;font-weight:600;">${safeAuthor}</p>
+                <p style="margin:0 0 6px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Rating</p>
+                <p style="margin:0 0 18px;color:#b45309;font-size:20px;letter-spacing:2px;">${stars} <span style="color:#6b7280;font-size:14px;">(${clamped}/5)</span></p>
+                <p style="margin:0 0 6px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Message</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #eef0f3;border-radius:10px;">
+                  <tr>
+                    <td style="padding:16px 18px;color:#374151;font-size:15px;line-height:1.7;">${safeMessage}</td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
+                  This feedback was stored and is awaiting moderation in your dashboard. It has not been published.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+};
+
+/**
+ * Alert the business when a low-rating testimonial comes in, so a human can
+ * follow up. Sent to process.env.BUSINESS_EMAIL.
+ *
+ * Like the confirmation email, this NEVER throws — it resolves to a result
+ * object so the caller can fire-and-forget it safely.
+ *
+ * @returns {Promise<{ success: boolean, data?: object, error?: any }>}
+ */
+export const sendTestimonialAlertEmail = async ({
+  parentAuthor,
+  rating,
+  message,
+}) => {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn(
+      '⚠️  RESEND_API_KEY is not set — skipping testimonial alert email.'
+    );
+    return { success: false, error: 'RESEND_API_KEY not configured' };
+  }
+
+  const businessEmail = process.env.BUSINESS_EMAIL;
+  if (!businessEmail) {
+    console.warn(
+      '⚠️  BUSINESS_EMAIL is not set — cannot route low-rating feedback.'
+    );
+    return { success: false, error: 'BUSINESS_EMAIL not configured' };
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: businessEmail,
+      subject: `⚠️ New ${rating}-star feedback needs attention`,
+      html: buildTestimonialAlertHtml({ parentAuthor, rating, message }),
+    });
+
+    if (error) {
+      console.error(
+        `❌ Resend failed to send testimonial alert to ${businessEmail}:`,
+        error
+      );
+      return { success: false, error };
+    }
+
+    console.log(
+      `✅ Testimonial alert sent to ${businessEmail} (id: ${data?.id ?? 'n/a'})`
+    );
+    return { success: true, data };
+  } catch (err) {
+    console.error(
+      `❌ Unexpected error sending testimonial alert to ${businessEmail}: ${err.message}`
     );
     return { success: false, error: err };
   }
