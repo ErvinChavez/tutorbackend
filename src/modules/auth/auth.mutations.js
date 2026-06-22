@@ -82,6 +82,7 @@ export const authMutations = {
         const token = generateToken(admin._id);
         return { token, admin };
       } catch (error) {
+        console.error('adminRegister failed:', error);
         // Schema-level validation failures (e.g. password too short).
         if (error.name === 'ValidationError') {
           throw new GraphQLError(error.message, {

@@ -10,6 +10,7 @@ import mongoose from 'mongoose';
 import Request from './request.model.js';
 import { TutoringRequestType, RequestStatusEnum } from './request.types.js';
 import { sendParentConfirmationEmail } from '../../services/emailService.js';
+import { requireAdmin } from '../../middleware/authMiddleware.js';
 
 /**
  * Input type for the public submission mutation. Keeping the args bundled
@@ -34,7 +35,8 @@ const SubmitTutoringRequestInput = new GraphQLInputObjectType({
  * These are spread into the RootMutation in `src/graphql/schema.js`.
  */
 export const requestMutations = {
-  // Public: a parent submits a new tutoring request.
+  // Public: a parent submits a new tutoring request. NO auth — parents are
+  // anonymous visitors.
   submitTutoringRequest: {
     type: TutoringRequestType,
     description:
@@ -89,7 +91,7 @@ export const requestMutations = {
     },
   },
 
-  // Teacher: accept or decline an existing request.
+  // Teacher-only: accept or decline an existing request.
   updateRequestStatus: {
     type: TutoringRequestType,
     description:
@@ -98,14 +100,10 @@ export const requestMutations = {
       id: { type: new GraphQLNonNull(GraphQLID) },
       status: { type: new GraphQLNonNull(RequestStatusEnum) },
     },
-    resolve: async (_parent, { id, status }) => {
-      // NOTE: Once the auth context is wired up (later milestone), guard this
-      // with an admin check, e.g.:
-      //   if (!context.admin) {
-      //     throw new GraphQLError('Not authorized', {
-      //       extensions: { code: 'UNAUTHENTICATED' },
-      //     });
-      //   }
+    resolve: async (_parent, { id, status }, context) => {
+      // 🔒 Auth gate: throws UNAUTHENTICATED unless the request carries a
+      // valid admin Bearer token. Must run before any data access.
+      await requireAdmin(context);
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new GraphQLError('Invalid request ID format', {

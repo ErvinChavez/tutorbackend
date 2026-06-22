@@ -35,18 +35,17 @@ const adminSchema = new mongoose.Schema(
 
 /**
  * Pre-save hook: hash the password ONLY when it has been set or changed.
- * This prevents re-hashing an already-hashed password on unrelated updates.
+ *
+ * Note: this is an `async` function with NO `next` parameter. Modern Mongoose
+ * (6+) runs async middleware in promise mode and does NOT pass a `next`
+ * callback — it treats the resolved promise as "done" and a thrown error as
+ * the failure. Just `return` early to skip, and `throw` to abort the save.
  */
-adminSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+adminSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 /**
