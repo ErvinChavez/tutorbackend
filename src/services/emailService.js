@@ -1,11 +1,21 @@
-import { Resend } from 'resend';
+// Email service backed by Brevo's transactional REST API.
+// Uses the built-in global fetch (Node 18+), so there is NO SDK dependency.
+//
+// Required env:
+//   BREVO_API_KEY       — your Brevo API key (starts with "xkeysib-")
+//   BREVO_SENDER_EMAIL  — a sender you've VERIFIED in Brevo (see note below)
+// Optional env:
+//   BREVO_SENDER_NAME   — display name for the sender (defaults below)
+//   BUSINESS_EMAIL      — where low-rating testimonial alerts go
+//
+// NOTE: Unlike Resend's shared sandbox sender, Brevo requires the `sender`
+// address to be a verified sender (or a verified domain) on your account.
+// Add and confirm one at https://app.brevo.com/senders before sending.
 
-// Initialize the Resend client once and reuse it across the app.
-const resend = new Resend(process.env.RESEND_API_KEY);
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 
-// Resend's shared sandbox sender. Swap for your verified domain in production
-// (e.g. 'hello@yourtutoring.com') once your domain is verified in Resend.
-const FROM_ADDRESS = 'onboarding@resend.dev';
+const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
+const SENDER_NAME = process.env.BREVO_SENDER_NAME || 'Tutoring Team';
 
 /**
  * Escape user-supplied values before interpolating them into HTML, so a
@@ -20,9 +30,64 @@ const escapeHtml = (value = '') =>
     .replace(/'/g, '&#039;');
 
 /**
+ * Low-level send via Brevo. Fault-tolerant: NEVER throws — always resolves to
+ * a result object so callers can fire-and-forget safely.
+ *
+ * @returns {Promise<{ success: boolean, data?: object, error?: any }>}
+ */
+const sendViaBrevo = async ({ to, subject, html }) => {
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('⚠️  BREVO_API_KEY is not set — skipping email.');
+    return { success: false, error: 'BREVO_API_KEY not configured' };
+  }
+  if (!SENDER_EMAIL) {
+    console.warn('⚠️  BREVO_SENDER_EMAIL is not set — skipping email.');
+    return { success: false, error: 'BREVO_SENDER_EMAIL not configured' };
+  }
+  if (!to) {
+    console.warn('⚠️  No recipient provided — skipping email.');
+    return { success: false, error: 'Missing recipient email address' };
+  }
+
+  try {
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: SENDER_EMAIL, name: SENDER_NAME },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    // Brevo returns 201 with a messageId on success; non-2xx carries a reason.
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error(
+        `❌ Brevo send failed (${res.status}) to ${to}: ${detail}`
+      );
+      return { success: false, error: detail || `HTTP ${res.status}` };
+    }
+
+    const data = await res.json().catch(() => ({}));
+    console.log(
+      `✅ Email sent to ${to} (messageId: ${data?.messageId ?? 'n/a'})`
+    );
+    return { success: true, data };
+  } catch (err) {
+    console.error(`❌ Unexpected error sending email to ${to}: ${err.message}`);
+    return { success: false, error: err };
+  }
+};
+
+/**
  * Build the styled HTML body for the onboarding confirmation email.
- * `tutoringOptions` may be an array, a single string, or empty — all are
- * normalized into a clean bulleted list.
+ * `tutoringOptions` may be an array, a single string, or empty.
  */
 const buildConfirmationHtml = ({
   parentName,
@@ -60,21 +125,18 @@ const buildConfirmationHtml = ({
       <tr>
         <td align="center">
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.06);">
-            <!-- Header -->
             <tr>
               <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:40px 40px 32px;text-align:center;">
                 <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Welcome Aboard! &#127891;</h1>
                 <p style="margin:8px 0 0;color:#e0e7ff;font-size:15px;">Your tutoring request has been received</p>
               </td>
             </tr>
-            <!-- Body -->
             <tr>
               <td style="padding:36px 40px 8px;">
                 <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:1.6;">Hi ${safeParentName},</p>
                 <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.7;">
                   Thank you for reaching out! We're thrilled to support <strong>${safeStudentName}</strong> on their learning journey. Here's a quick summary of what you shared with us:
                 </p>
-                <!-- Details card -->
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #eef0f3;border-radius:10px;margin:0 0 24px;">
                   <tr>
                     <td style="padding:18px 20px;">
@@ -98,7 +160,6 @@ const buildConfirmationHtml = ({
                 <p style="margin:0;color:#111827;font-size:15px;font-weight:600;">The Tutoring Team</p>
               </td>
             </tr>
-            <!-- Footer -->
             <tr>
               <td style="padding:28px 40px 36px;border-top:1px solid #eef0f3;text-align:center;">
                 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
@@ -117,11 +178,7 @@ const buildConfirmationHtml = ({
 
 /**
  * Send the onboarding confirmation email to a parent.
- *
- * Fault-tolerant: NEVER throws. Always resolves to a result object so the
- * caller can decide what to do without risking an unhandled rejection.
- *
- * @returns {Promise<{ success: boolean, data?: object, error?: any }>}
+ * Signature unchanged from the previous (Resend) implementation.
  */
 export const sendParentConfirmationEmail = async ({
   parentName,
@@ -130,55 +187,21 @@ export const sendParentConfirmationEmail = async ({
   gradeLevel,
   tutoringOptions,
 }) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(
-      '⚠️  RESEND_API_KEY is not set — skipping parent confirmation email.'
-    );
-    return { success: false, error: 'RESEND_API_KEY not configured' };
-  }
-
-  if (!parentEmail) {
-    console.warn('⚠️  No parent email provided — skipping confirmation email.');
-    return { success: false, error: 'Missing recipient email address' };
-  }
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: parentEmail,
-      subject: `Welcome aboard, ${parentName || 'there'}! 🎓`,
-      html: buildConfirmationHtml({
-        parentName,
-        studentName,
-        gradeLevel,
-        tutoringOptions,
-      }),
-    });
-
-    if (error) {
-      console.error(
-        `❌ Resend failed to send confirmation email to ${parentEmail}:`,
-        error
-      );
-      return { success: false, error };
-    }
-
-    console.log(
-      `✅ Confirmation email sent to ${parentEmail} (id: ${data?.id ?? 'n/a'})`
-    );
-    return { success: true, data };
-  } catch (err) {
-    console.error(
-      `❌ Unexpected error sending confirmation email to ${parentEmail}: ${err.message}`
-    );
-    return { success: false, error: err };
-  }
+  return sendViaBrevo({
+    to: parentEmail,
+    subject: `Welcome aboard, ${parentName || 'there'}! 🎓`,
+    html: buildConfirmationHtml({
+      parentName,
+      studentName,
+      gradeLevel,
+      tutoringOptions,
+    }),
+  });
 };
 
 /**
- * Build the internal HTML body for a low-rating testimonial alert.
- * This email goes to the BUSINESS, not the customer — it's a heads-up that
- * someone left critical feedback and may want a personal follow-up.
+ * Build the internal HTML body for a low-rating testimonial alert (sent to the
+ * business, not the customer).
  */
 const buildTestimonialAlertHtml = ({ parentAuthor, rating, message }) => {
   const safeAuthor = escapeHtml(parentAuthor) || 'Anonymous';
@@ -230,26 +253,14 @@ const buildTestimonialAlertHtml = ({ parentAuthor, rating, message }) => {
 };
 
 /**
- * Alert the business when a low-rating testimonial comes in, so a human can
- * follow up. Sent to process.env.BUSINESS_EMAIL.
- *
- * Like the confirmation email, this NEVER throws — it resolves to a result
- * object so the caller can fire-and-forget it safely.
- *
- * @returns {Promise<{ success: boolean, data?: object, error?: any }>}
+ * Alert the business when a low-rating testimonial comes in.
+ * Signature unchanged from the previous (Resend) implementation.
  */
 export const sendTestimonialAlertEmail = async ({
   parentAuthor,
   rating,
   message,
 }) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(
-      '⚠️  RESEND_API_KEY is not set — skipping testimonial alert email.'
-    );
-    return { success: false, error: 'RESEND_API_KEY not configured' };
-  }
-
   const businessEmail = process.env.BUSINESS_EMAIL;
   if (!businessEmail) {
     console.warn(
@@ -258,30 +269,9 @@ export const sendTestimonialAlertEmail = async ({
     return { success: false, error: 'BUSINESS_EMAIL not configured' };
   }
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: businessEmail,
-      subject: `⚠️ New ${rating}-star feedback needs attention`,
-      html: buildTestimonialAlertHtml({ parentAuthor, rating, message }),
-    });
-
-    if (error) {
-      console.error(
-        `❌ Resend failed to send testimonial alert to ${businessEmail}:`,
-        error
-      );
-      return { success: false, error };
-    }
-
-    console.log(
-      `✅ Testimonial alert sent to ${businessEmail} (id: ${data?.id ?? 'n/a'})`
-    );
-    return { success: true, data };
-  } catch (err) {
-    console.error(
-      `❌ Unexpected error sending testimonial alert to ${businessEmail}: ${err.message}`
-    );
-    return { success: false, error: err };
-  }
+  return sendViaBrevo({
+    to: businessEmail,
+    subject: `⚠️ New ${rating}-star feedback needs attention`,
+    html: buildTestimonialAlertHtml({ parentAuthor, rating, message }),
+  });
 };
