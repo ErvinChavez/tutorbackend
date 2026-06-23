@@ -11,10 +11,7 @@ import Student from '../students/student.model.js';
 import { StudentType } from '../students/student.types.js';
 import { DateTimeScalar } from '../requests/request.types.js';
 
-/**
- * Enum mirroring the `paymentStatus` enum on the Session Mongoose model.
- * Exported so the mutations module can reuse it for input args.
- */
+
 export const PaymentStatusEnum = new GraphQLEnumType({
   name: 'PaymentStatus',
   description: 'Payment state of a tutoring session.',
@@ -25,12 +22,6 @@ export const PaymentStatusEnum = new GraphQLEnumType({
   },
 });
 
-/**
- * The GraphQL representation of a single tutoring session.
- * The `student` field is a derived resolver that follows `studentId` and
- * returns the full Student profile, so clients can fetch a session and its
- * student in one query.
- */
 export const SessionType = new GraphQLObjectType({
   name: 'Session',
   description: 'An individual tutoring session.',

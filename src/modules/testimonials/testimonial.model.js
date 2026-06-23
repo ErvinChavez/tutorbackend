@@ -23,13 +23,11 @@ const testimonialSchema = new mongoose.Schema(
         message: 'Rating must be a whole number between 1 and 5',
       },
     },
-    // Testimonials are hidden until an admin approves them for public display.
     isApproved: {
       type: Boolean,
       default: false,
     },
-    // Optional association with a student, if you want to tie reviews back
-    // to a specific tutoring relationship.
+
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',

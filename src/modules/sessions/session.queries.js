@@ -4,10 +4,7 @@ import Session from './session.model.js';
 import { SessionType } from './session.types.js';
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 
-/**
- * Query field configs for the sessions module.
- * Spread into the RootQuery in `src/graphql/schema.js`. Admin-only.
- */
+
 export const sessionQueries = {
   // Every session, most recent first.
   sessions: {
@@ -19,7 +16,6 @@ export const sessionQueries = {
     },
   },
 
-  // Sessions still owing money — UNPAID or OVERDUE.
   unpaidSessions: {
     type: new GraphQLList(new GraphQLNonNull(SessionType)),
     description:

@@ -10,14 +10,6 @@ import {
 import Request from '../requests/request.model.js';
 import { TutoringRequestType, DateTimeScalar } from '../requests/request.types.js';
 
-/**
- * The GraphQL representation of an active student profile.
- *
- * Field names map 1:1 to the Student Mongoose document, so the default
- * resolvers read straight off it. The one exception is `originalRequest`,
- * which is a derived field: it follows the stored `originalRequestId`
- * reference and loads the source request on demand.
- */
 export const StudentType = new GraphQLObjectType({
   name: 'Student',
   description: 'An active student profile.',
@@ -36,11 +28,8 @@ export const StudentType = new GraphQLObjectType({
 
     isActive: { type: new GraphQLNonNull(GraphQLBoolean) },
 
-    // Raw stored reference (handy for clients that just want the id).
     originalRequestId: { type: GraphQLID },
 
-    // Derived field: resolve the linked request only if one exists. Returns
-    // null for students that were created manually rather than converted.
     originalRequest: {
       type: TutoringRequestType,
       description:

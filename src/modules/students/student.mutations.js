@@ -6,10 +6,7 @@ import Request from '../requests/request.model.js';
 import { StudentType } from './student.types.js';
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 
-/**
- * Mutation field configs for the students module.
- * Spread into the RootMutation in `src/graphql/schema.js`.
- */
+
 export const studentMutations = {
   // Accept a tutoring request and spin up an active student profile from it.
   convertRequestToStudent: {
@@ -36,9 +33,6 @@ export const studentMutations = {
         });
       }
 
-      // 2. Don't convert the same request twice — that would create a
-      //    duplicate student. The originalRequestId link makes this cheap
-      //    to check.
       const existing = await Student.findOne({ originalRequestId: request._id });
       if (existing) {
         throw new GraphQLError(

@@ -14,10 +14,6 @@ import { SessionType, PaymentStatusEnum } from './session.types.js';
 import { DateTimeScalar } from '../requests/request.types.js';
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 
-/**
- * Input type for scheduling a session. `date` and `paymentStatus` are
- * optional — the Session model defaults them (date -> now, status -> UNPAID).
- */
 const CreateSessionInput = new GraphQLInputObjectType({
   name: 'CreateSessionInput',
   fields: {
@@ -30,10 +26,6 @@ const CreateSessionInput = new GraphQLInputObjectType({
   },
 });
 
-/**
- * Mutation field configs for the sessions module.
- * Spread into the RootMutation in `src/graphql/schema.js`. Admin-only.
- */
 export const sessionMutations = {
   // Schedule a new session for an existing student.
   createSession: {

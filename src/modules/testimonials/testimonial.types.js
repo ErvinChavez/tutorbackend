@@ -9,9 +9,6 @@ import {
 
 import { DateTimeScalar } from '../requests/request.types.js';
 
-/**
- * Public-facing representation of a testimonial / review.
- */
 export const TestimonialType = new GraphQLObjectType({
   name: 'Testimonial',
   description: 'A parent review/testimonial.',
@@ -27,18 +24,6 @@ export const TestimonialType = new GraphQLObjectType({
   }),
 });
 
-/**
- * Returned by submitTestimonial. Bundles the stored testimonial with the
- * routing decision so the frontend knows how to respond:
- *
- *  - invitePublicReview = true  -> show a "share this publicly" prompt and,
- *                                  if configured, the publicReviewUrl link.
- *  - invitePublicReview = false -> show the follow-up message; the business
- *                                  has been alerted by email to reach out.
- *
- * In BOTH cases the testimonial is stored and starts unapproved — this object
- * never publishes anything; it only guides the thank-you screen.
- */
 export const SubmitTestimonialResponseType = new GraphQLObjectType({
   name: 'SubmitTestimonialResponse',
   description: 'Result of submitting a testimonial, with a routing hint.',

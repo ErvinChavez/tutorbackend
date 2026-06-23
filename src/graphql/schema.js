@@ -19,10 +19,7 @@ import { sessionMutations } from '../modules/sessions/session.mutations.js';
 import { testimonialQueries } from '../modules/testimonials/testimonial.queries.js';
 import { testimonialMutations } from '../modules/testimonials/testimonial.mutations.js';
 
-/**
- * Root Query type. Each feature module exports a flat object of field
- * configs which we spread in here.
- */
+/* Root Query type */
 const RootQuery = new GraphQLObjectType({
   name: 'Query',
   description: 'Root query type.',
@@ -34,9 +31,7 @@ const RootQuery = new GraphQLObjectType({
   }),
 });
 
-/**
- * Root Mutation type. Same spread pattern as RootQuery.
- */
+/* Root Mutation type */
 const RootMutation = new GraphQLObjectType({
   name: 'Mutation',
   description: 'Root mutation type.',
@@ -49,10 +44,6 @@ const RootMutation = new GraphQLObjectType({
   }),
 });
 
-/**
- * The unified executable schema. Pass this to Apollo Server in server.js:
- *   const server = new ApolloServer({ schema });
- */
 const schema = new GraphQLSchema({
   query: RootQuery,
   mutation: RootMutation,

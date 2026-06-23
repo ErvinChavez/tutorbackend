@@ -1,26 +1,8 @@
-// Email service backed by Brevo's transactional REST API.
-// Uses the built-in global fetch (Node 18+), so there is NO SDK dependency.
-//
-// Required env:
-//   BREVO_API_KEY       — your Brevo API key (starts with "xkeysib-")
-//   BREVO_SENDER_EMAIL  — a sender you've VERIFIED in Brevo (see note below)
-// Optional env:
-//   BREVO_SENDER_NAME   — display name for the sender (defaults below)
-//   BUSINESS_EMAIL      — where low-rating testimonial alerts go
-//
-// NOTE: Unlike Resend's shared sandbox sender, Brevo requires the `sender`
-// address to be a verified sender (or a verified domain) on your account.
-// Add and confirm one at https://app.brevo.com/senders before sending.
-
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 
 const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
 const SENDER_NAME = process.env.BREVO_SENDER_NAME || 'Tutoring Team';
 
-/**
- * Escape user-supplied values before interpolating them into HTML, so a
- * name like `O'Brien <script>` can never break or inject into the markup.
- */
 const escapeHtml = (value = '') =>
   String(value)
     .replace(/&/g, '&amp;')
@@ -65,7 +47,6 @@ const sendViaBrevo = async ({ to, subject, html }) => {
       }),
     });
 
-    // Brevo returns 201 with a messageId on success; non-2xx carries a reason.
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.error(
@@ -76,7 +57,7 @@ const sendViaBrevo = async ({ to, subject, html }) => {
 
     const data = await res.json().catch(() => ({}));
     console.log(
-      `✅ Email sent to ${to} (messageId: ${data?.messageId ?? 'n/a'})`
+      `Email sent to ${to} (messageId: ${data?.messageId ?? 'n/a'})`
     );
     return { success: true, data };
   } catch (err) {
@@ -85,10 +66,6 @@ const sendViaBrevo = async ({ to, subject, html }) => {
   }
 };
 
-/**
- * Build the styled HTML body for the onboarding confirmation email.
- * `tutoringOptions` may be an array, a single string, or empty.
- */
 const buildConfirmationHtml = ({
   parentName,
   studentName,
@@ -176,10 +153,6 @@ const buildConfirmationHtml = ({
 </html>`;
 };
 
-/**
- * Send the onboarding confirmation email to a parent.
- * Signature unchanged from the previous (Resend) implementation.
- */
 export const sendParentConfirmationEmail = async ({
   parentName,
   parentEmail,
@@ -199,10 +172,6 @@ export const sendParentConfirmationEmail = async ({
   });
 };
 
-/**
- * Build the internal HTML body for a low-rating testimonial alert (sent to the
- * business, not the customer).
- */
 const buildTestimonialAlertHtml = ({ parentAuthor, rating, message }) => {
   const safeAuthor = escapeHtml(parentAuthor) || 'Anonymous';
   const safeMessage = escapeHtml(message) || '(no message provided)';
@@ -252,10 +221,6 @@ const buildTestimonialAlertHtml = ({ parentAuthor, rating, message }) => {
 </html>`;
 };
 
-/**
- * Alert the business when a low-rating testimonial comes in.
- * Signature unchanged from the previous (Resend) implementation.
- */
 export const sendTestimonialAlertEmail = async ({
   parentAuthor,
   rating,
@@ -264,14 +229,14 @@ export const sendTestimonialAlertEmail = async ({
   const businessEmail = process.env.BUSINESS_EMAIL;
   if (!businessEmail) {
     console.warn(
-      '⚠️  BUSINESS_EMAIL is not set — cannot route low-rating feedback.'
+      ' BUSINESS_EMAIL is not set — cannot route low-rating feedback.'
     );
     return { success: false, error: 'BUSINESS_EMAIL not configured' };
   }
 
   return sendViaBrevo({
     to: businessEmail,
-    subject: `⚠️ New ${rating}-star feedback needs attention`,
+    subject: ` New ${rating}-star feedback needs attention`,
     html: buildTestimonialAlertHtml({ parentAuthor, rating, message }),
   });
 };

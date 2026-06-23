@@ -17,9 +17,6 @@ import {
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 import { sendTestimonialAlertEmail } from '../../services/emailService.js';
 
-// Ratings at or ABOVE this threshold get invited to share publicly. Anything
-// below it is routed to the business inbox for a personal follow-up instead.
-// Tune to taste; 4 means 4-5 stars are "happy", 1-3 are "needs attention".
 const PUBLIC_REVIEW_RATING_THRESHOLD = 4;
 
 const SubmitTestimonialInput = new GraphQLInputObjectType({
@@ -32,14 +29,8 @@ const SubmitTestimonialInput = new GraphQLInputObjectType({
   },
 });
 
-/**
- * Mutation field configs for the testimonials module.
- * Spread into the RootMutation in `src/graphql/schema.js`.
- */
+
 export const testimonialMutations = {
-  // PUBLIC: a parent submits feedback. The submission is ALWAYS stored in full
-  // (including low ratings) and ALWAYS starts unapproved. The rating only
-  // decides the thank-you experience, never whether the feedback is recorded.
   submitTestimonial: {
     type: new GraphQLNonNull(SubmitTestimonialResponseType),
     description:
@@ -55,7 +46,7 @@ export const testimonialMutations = {
           message: input.message,
           rating: input.rating,
           studentId: input.studentId || null,
-          // isApproved defaults to false on the model.
+          
         });
       } catch (error) {
         if (error.name === 'ValidationError') {
@@ -73,10 +64,6 @@ export const testimonialMutations = {
         testimonial.rating >= PUBLIC_REVIEW_RATING_THRESHOLD;
 
       if (!invitePublicReview) {
-        // Service-recovery path: alert the business so a human can reach out.
-        // Fire-and-forget — the feedback is already safely stored, and a mail
-        // hiccup must not fail the submission. (Same pattern as the request
-        // confirmation email.)
         sendTestimonialAlertEmail({
           parentAuthor: testimonial.parentAuthor,
           rating: testimonial.rating,
@@ -101,8 +88,6 @@ export const testimonialMutations = {
     },
   },
 
-  // ADMIN: approve or un-approve a testimonial for public display. This is the
-  // only thing that controls whether a stored testimonial appears on the site.
   setTestimonialApproval: {
     type: new GraphQLNonNull(TestimonialType),
     description:

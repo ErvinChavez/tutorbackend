@@ -5,14 +5,7 @@ import Student from './student.model.js';
 import { StudentType } from './student.types.js';
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 
-/**
- * Query field configs for the students module.
- * Spread into the RootQuery in `src/graphql/schema.js`.
- *
- * Both queries are admin-only — student profiles contain parent PII.
- */
 export const studentQueries = {
-  // All active student profiles, newest first.
   students: {
     type: new GraphQLList(new GraphQLNonNull(StudentType)),
     description: 'Fetch all active student profiles (teacher only).',

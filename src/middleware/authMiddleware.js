@@ -17,12 +17,11 @@ import Admin from '../modules/auth/Admin.model.js';
 export const getAdminFromContext = async (context) => {
   const authHeader = context?.req?.headers?.authorization || '';
 
-  // Expect the standard "Authorization: Bearer <token>" format.
   if (!authHeader.startsWith('Bearer ')) {
     return null;
   }
 
-  const token = authHeader.slice(7).trim(); // strip "Bearer "
+  const token = authHeader.slice(7).trim();
   if (!token) {
     return null;
   }
@@ -30,13 +29,10 @@ export const getAdminFromContext = async (context) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // generateToken signs `{ id }`; look that admin up. Returns null if the
-    // account was deleted after the token was issued.
     const admin = await Admin.findById(decoded.id);
     return admin || null;
   } catch (error) {
-    // Invalid signature, expired token, missing secret, etc. -> treat as
-    // unauthenticated rather than leaking the reason to the caller.
+
     return null;
   }
 };

@@ -8,15 +8,7 @@ import {
   Kind,
 } from 'graphql';
 
-/**
- * Custom DateTime scalar.
- * Serializes JS Date objects (e.g. Mongoose `createdAt`/`updatedAt`) to
- * ISO-8601 UTC strings on the way out, and parses incoming ISO strings
- * back into Date objects on the way in.
- *
- * As the project grows you may want to move this into a shared
- * `src/graphql/scalars.js` and import it across modules.
- */
+
 export const DateTimeScalar = new GraphQLScalarType({
   name: 'DateTime',
   description: 'An ISO-8601 encoded UTC date-time string.',
@@ -46,11 +38,7 @@ export const DateTimeScalar = new GraphQLScalarType({
   },
 });
 
-/**
- * Enum mirroring the `status` enum on the Request Mongoose model.
- * Reused by queries, mutations, and the object type to keep the schema
- * and the database in lock-step.
- */
+
 export const RequestStatusEnum = new GraphQLEnumType({
   name: 'RequestStatus',
   description: 'Lifecycle status of a tutoring request.',
@@ -61,11 +49,6 @@ export const RequestStatusEnum = new GraphQLEnumType({
   },
 });
 
-/**
- * The GraphQL representation of a parent's tutoring request.
- * Field names map 1:1 to the Mongoose document, so the default
- * resolvers read straight off the returned document.
- */
 export const TutoringRequestType = new GraphQLObjectType({
   name: 'TutoringRequest',
   description: 'A tutoring request submitted by a parent.',

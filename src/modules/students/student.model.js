@@ -42,8 +42,7 @@ const studentSchema = new mongoose.Schema(
       default: true,
     },
 
-    // Optional back-reference to the request this student was converted from.
-    // Null for students added manually rather than via an accepted request.
+ 
     originalRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Request',

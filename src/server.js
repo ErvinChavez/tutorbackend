@@ -12,12 +12,9 @@ import schema from './graphql/schema.js';
 const PORT = process.env.PORT || 4000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Express app wrapped in an explicit HTTP server so Apollo's drain plugin
-// can shut it down gracefully (finishing in-flight requests on restart/deploy).
 const app = express();
 const httpServer = http.createServer(app);
 
-// Apollo Server orchestration instance.
 const server = new ApolloServer({
   schema,
   // Introspection powers the Sandbox in dev, but exposes your full schema —
@@ -39,9 +36,7 @@ async function startServer() {
   );
   app.use(express.json());
 
-  // 4. Mount GraphQL with a context function. Right now it just forwards the
-  //    request; the auth milestone will decode a token here and attach the
-  //    authenticated admin (the `context.admin` your mutations expect).
+  // 4. Mount GraphQL with a context function.
   app.use(
     '/graphql',
     expressMiddleware(server, {
@@ -49,17 +44,13 @@ async function startServer() {
     })
   );
 
-  // 5. Listen via the HTTP server (not app.listen) so the drain plugin works.
-  //    Apollo installs SIGINT/SIGTERM handlers by default, which call
-  //    server.stop() and trigger the graceful drain on production shutdowns.
+  // 5. Listen via the HTTP server 
   await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
 
   console.log(`📡 Express 5 server running on http://localhost:${PORT}`);
   console.log(`🚀 Apollo GraphQL ready at http://localhost:${PORT}/graphql`);
 }
 
-// Bootstrap. Any failure during startup (DB, Apollo, binding the port)
-// is fatal — log it and exit so the process manager can react.
 startServer().catch((error) => {
   console.error(`❌ Failed to start server: ${error.message}`);
   process.exit(1);

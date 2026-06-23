@@ -4,13 +4,7 @@ import Testimonial from './testimonial.model.js';
 import { TestimonialType } from './testimonial.types.js';
 import { requireAdmin } from '../../middleware/authMiddleware.js';
 
-/**
- * Query field configs for the testimonials module.
- * Spread into the RootQuery in `src/graphql/schema.js`.
- */
 export const testimonialQueries = {
-  // PUBLIC: only approved testimonials, for display on the marketing site.
-  // No auth — but it can only ever return testimonials the admin approved.
   approvedTestimonials: {
     type: new GraphQLList(new GraphQLNonNull(TestimonialType)),
     description: 'Public: approved testimonials for display on the site.',
@@ -19,7 +13,6 @@ export const testimonialQueries = {
     },
   },
 
-  // ADMIN: the moderation queue — submissions awaiting a decision.
   pendingTestimonials: {
     type: new GraphQLList(new GraphQLNonNull(TestimonialType)),
     description: 'Admin: testimonials awaiting moderation.',
@@ -29,8 +22,6 @@ export const testimonialQueries = {
     },
   },
 
-  // ADMIN: everything, approved or not — including low-rated feedback. This is
-  // the honest "full picture" view that nothing is hidden from.
   allTestimonials: {
     type: new GraphQLList(new GraphQLNonNull(TestimonialType)),
     description: 'Admin: every testimonial, regardless of rating or approval.',

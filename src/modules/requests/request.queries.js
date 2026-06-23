@@ -4,10 +4,7 @@ import mongoose from 'mongoose';
 import Request from './request.model.js';
 import { TutoringRequestType } from './request.types.js';
 
-/**
- * Query field configs for the requests module.
- * These are spread into the RootQuery in `src/graphql/schema.js`.
- */
+
 export const requestQueries = {
   // Teacher dashboard: list every request, newest first.
   requests: {

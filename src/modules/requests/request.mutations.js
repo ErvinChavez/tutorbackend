@@ -30,10 +30,6 @@ const SubmitTutoringRequestInput = new GraphQLInputObjectType({
   },
 });
 
-/**
- * Mutation field configs for the requests module.
- * These are spread into the RootMutation in `src/graphql/schema.js`.
- */
 export const requestMutations = {
   // Public: a parent submits a new tutoring request. NO auth — parents are
   // anonymous visitors.
@@ -49,18 +45,6 @@ export const requestMutations = {
         // `status` is intentionally omitted — the model defaults it to PENDING.
         const newRequest = await Request.create(input);
 
-        // ────────────────────────────────────────────────────────────────
-        // Fire the confirmation email AFTER the request is safely persisted.
-        //
-        // This is deliberately fire-and-forget: we do NOT `await` it, so a
-        // slow mail provider never delays the GraphQL response. The email
-        // service already swallows its own errors and resolves to a result
-        // object, but we attach a `.catch` as a final safety net so that a
-        // rejection can never become an unhandled promise rejection (which
-        // could otherwise crash the Node process).
-        //
-        // The created request is returned regardless of email outcome.
-        // ────────────────────────────────────────────────────────────────
         sendParentConfirmationEmail({
           parentName: newRequest.parentName,
           parentEmail: newRequest.email,
@@ -75,7 +59,6 @@ export const requestMutations = {
           );
         });
 
-        // Return immediately — delivery happens in the background.
         return newRequest;
       } catch (error) {
         // Surface Mongoose validation failures as clean user-input errors.
@@ -91,7 +74,6 @@ export const requestMutations = {
     },
   },
 
-  // Teacher-only: accept or decline an existing request.
   updateRequestStatus: {
     type: TutoringRequestType,
     description:
@@ -101,8 +83,6 @@ export const requestMutations = {
       status: { type: new GraphQLNonNull(RequestStatusEnum) },
     },
     resolve: async (_parent, { id, status }, context) => {
-      // 🔒 Auth gate: throws UNAUTHENTICATED unless the request carries a
-      // valid admin Bearer token. Must run before any data access.
       await requireAdmin(context);
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -111,8 +91,6 @@ export const requestMutations = {
         });
       }
 
-      // The enum already blocks unknown values; this also blocks resetting
-      // a request back to PENDING via this mutation.
       if (!['ACCEPTED', 'DECLINED'].includes(status)) {
         throw new GraphQLError(
           'Status can only be updated to ACCEPTED or DECLINED',
